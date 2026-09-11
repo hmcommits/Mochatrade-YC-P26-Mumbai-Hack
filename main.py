@@ -1206,3 +1206,44 @@ def demo_seed_hero() -> dict:
         "seeded_account_id": HERO_SOURCE,
         "triggered_alert_id": alt_id or "ALT_HERO",
     }
+
+# --- NEW ENDPOINTS FOR FRONTEND WIRING ---
+_watchlist = []
+
+class WatchlistItem(BaseModel):
+    id: str
+    type: str
+    risk: float
+    reason: str
+    addedAt: str
+    status: str
+
+@app.get("/watchlist")
+def get_watchlist():
+    return {"watchlist": _watchlist}
+
+@app.post("/watchlist")
+def add_to_watchlist(item: WatchlistItem):
+    if not any(w["id"] == item.id for w in _watchlist):
+        _watchlist.append(item.dict())
+    return {"status": "success"}
+
+@app.delete("/watchlist/{item_id}")
+def remove_from_watchlist(item_id: str):
+    global _watchlist
+    _watchlist = [w for w in _watchlist if w["id"] != item_id]
+    return {"status": "success"}
+
+@app.get("/reports")
+def get_reports():
+    reports = []
+    for idx, alert in enumerate(_alerts):
+        reports.append({
+            "title": f"RBI SOP Section 4(b) Freeze Request - {alert['alert_id']}",
+            "category": "Regulatory Emergency Freeze",
+            "date": datetime.utcnow().strftime("%Y-%m-%d"),
+            "reference": f"RBI-MULE-{datetime.utcnow().year}-{idx+100}",
+            "status": "Ready for Signature" if alert["status"] == "open" else "Archived",
+            "caseId": alert["alert_id"]
+        })
+    return {"reports": reports}

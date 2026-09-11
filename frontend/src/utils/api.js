@@ -90,3 +90,35 @@ export async function triggerDemoSeed() {
 export async function triggerDemoReset() {
     await fetch(`${API_URL}/demo/reset`, { method: 'POST' });
 }
+
+export async function fetchTransactions(page = 1) {
+    const res = await fetch(`${API_URL}/transactions?page=${page}`);
+    return res.json();
+}
+
+export async function fetchWatchlist() {
+    const res = await fetch(`${API_URL}/watchlist`);
+    return res.json();
+}
+
+export async function apiAddToWatchlist(item) {
+    await fetch(`${API_URL}/watchlist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(item)
+    });
+}
+
+export async function apiRemoveFromWatchlist(id) {
+    await fetch(`${API_URL}/watchlist/${id}`, { method: 'DELETE' });
+}
+
+export async function fetchReports() {
+    const res = await fetch(`${API_URL}/reports`);
+    return res.json();
+}
+
+export async function fetchExplain(accountId) {
+    const res = await fetch(`${API_URL}/explain/${accountId}`, { method: 'POST' });
+    return res.json();
+}
