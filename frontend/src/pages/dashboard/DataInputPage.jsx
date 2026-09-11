@@ -133,31 +133,42 @@ export function DataInputPage() {
         setTimeout(async () => {
           setIsPipelineRunning(false);
 
-          // Format for backend
-          const txs = lastParsedRows.map(r => ({
-            src: r.sender_id,
-            dst: r.receiver_id,
-            amount: Number(r.amount) || 0,
-            timestamp: r.timestamp || new Date().toISOString(),
-            device_id: r.device_id || null
-          }));
+          try {
+            // Format for backend
+            const txs = lastParsedRows.map(r => ({
+              src: r.sender_id,
+              dst: r.receiver_id,
+              amount: Number(r.amount) || 0,
+              timestamp: r.timestamp || new Date().toISOString(),
+              device_id: r.device_id || null
+            }));
 
-          // Clear the backend graph first
-          await fetch('http://localhost:8000/demo/reset', { method: 'POST' });
+            // Clear the backend graph first
+            await fetch('http://localhost:8000/demo/reset', { method: 'POST' });
 
-          // Push all rows to backend for real ML inference
-          await fetch('http://localhost:8000/ingest/batch', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(txs)
-          });
+            // Push all rows to backend for real ML inference
+            const res = await fetch('http://localhost:8000/ingest/batch', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(txs)
+            });
 
-          // Reload the live global dataset
-          const { fetchLiveDataset } = await import('../../utils/api');
-          const liveData = await fetchLiveDataset();
-          await loadUploadedDataset(liveData); // We pass the liveData to the context
+            if (!res.ok) {
+              const text = await res.text();
+              throw new Error(text || res.statusText);
+            }
 
-          navigate('/app/overview');
+            // Reload the live global dataset
+            const { fetchLiveDataset } = await import('../../utils/api');
+            const liveData = await fetchLiveDataset();
+            await loadUploadedDataset(liveData); // We pass the liveData to the context
+
+            navigate('/app/overview');
+          } catch (err) {
+            console.error(err);
+            alert("Backend ML inference failed: " + err.message);
+            setIsPipelineRunning(false);
+          }
         }, 500);
       }
     }, 280);
@@ -327,6 +338,13 @@ export function DataInputPage() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+
+              {/* ACTION BUTTON TO START PIPELINE */}
+              <div style={{ marginTop: '24px', textAlign: 'right' }}>
+                <button className="btn btn-primary" onClick={handleAnalyzeDataset} style={{ padding: '12px 24px', fontSize: '15px' }}>
+                  Analyze Dataset
+                </button>
               </div>
             </>
           )}
