@@ -11,7 +11,30 @@ export async function fetchLiveDataset() {
     const alertsRes = await fetch(`${API_URL}/alerts`);
     const alertsData = await alertsRes.json();
 
-    const nodes = graphData.nodes.map(n => {
+    // Filter the raw nodes to keep the graph small and readable for the demo.
+    // The backend leaks all device nodes because they don't have risk scores. We need to manually prune them.
+    let demoNodes = graphData.nodes.filter(n => {
+        const isAccount = n.id.startsWith("ACC_");
+        // Keep all flagged/high-risk accounts, plus a tiny random sample of normal accounts for background visual
+        if (isAccount) {
+            return n.risk_score >= 60 || Math.random() > 0.95; 
+        }
+        return true; // Keep devices temporarily, we will prune orphans next
+    });
+
+    // Determine which nodes actually have valid connections
+    const tempNodeIds = new Set(demoNodes.map(n => n.id));
+    const connectedNodeIds = new Set();
+    
+    graphData.edges.forEach(e => {
+        if (tempNodeIds.has(e.source) && tempNodeIds.has(e.target)) {
+            connectedNodeIds.add(e.source);
+            connectedNodeIds.add(e.target);
+        }
+    });
+
+    // Final prune: Only keep accounts we selected, and ONLY keep devices that connect to them
+    const nodes = demoNodes.filter(n => connectedNodeIds.has(n.id)).map(n => {
         const isAccount = n.id.startsWith("ACC_");
         const isFlagged = n.risk_score >= 70;
         let type = isAccount ? 'account' : 'device';
