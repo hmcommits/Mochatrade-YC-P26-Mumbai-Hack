@@ -9,8 +9,8 @@ export function OverviewPage() {
   const cases = currentDataset.cases || [];
   const logs = currentDataset.logs || [];
   const alert = currentDataset.alert || {
-    title: 'PRE-EMPTIVE FLAG',
-    body: 'New account ACC-9081 flagged at creation.'
+    title: 'SYSTEM SECURE',
+    body: 'No active threats detected in current topology.'
   };
 
   const statusClass = {
