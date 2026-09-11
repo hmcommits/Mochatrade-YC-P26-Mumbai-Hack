@@ -66,10 +66,22 @@ export function DatasetProvider({ children }) {
 
   async function loadUploadedDataset(model) {
     setActiveMode('uploaded');
-    // If they uploaded CSV via the old mock risk engine, we just use the fake model for now 
-    // unless we also wire up the POST /ingest flow. Let's just fetch live data for simplicity:
-    const liveData = await fetchLiveDataset();
+    // Fetch with min_risk=0 so ALL accounts from the uploaded CSV are shown on the graph
+    const liveData = await fetchLiveDataset(0);
     setCurrentDataset(liveData);
+
+    import('../utils/api').then(async (api) => {
+        const rp = await api.fetchReports();
+        setReports(rp.reports || []);
+        const tx = await api.fetchTransactions(1);
+        setTransactions(tx.transactions || []);
+        const al = await api.fetchAlerts();
+        setCurrentDataset(prev => ({ ...prev, alerts: al.alerts || [], cases: al.alerts?.map(a => ({
+          id: a.alert_id, risk: Math.round(a.risk_score), status: a.status === 'open' ? 'CRITICAL' : 'ELEVATED',
+          accounts: a.involved_accounts, tx: a.involved_transactions, summary: a.reason
+        })) || [] }));
+    });
+
     setSelectedNode(null);
     setFocusedNodeId(null);
     setSearchAccountQuery('');

@@ -1,8 +1,8 @@
 const API_URL = 'http://localhost:8000';
 
-export async function fetchLiveDataset() {
-    // Only fetch nodes with elevated risk (>40) to keep the visualization clean and performant
-    const graphRes = await fetch(`${API_URL}/graph?min_risk=40`);
+export async function fetchLiveDataset(minRisk = 40) {
+    // Only fetch nodes with elevated risk to keep the visualization clean and performant
+    const graphRes = await fetch(`${API_URL}/graph?min_risk=${minRisk}`);
     const graphData = await graphRes.json();
     
     const statsRes = await fetch(`${API_URL}/stats`);

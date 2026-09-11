@@ -2421,43 +2421,70 @@ table.d-table td.id {
 
 /* Print styles for Dossier */
 @media print {
+  /* Hide everything except the dossier modal */
   body > * {
     display: none !important;
   }
-  .overlay {
-    position: static;
-    background: #fff;
+  /* Show the overlay wrapper */
+  body > .overlay,
+  #root .overlay {
     display: block !important;
-    padding: 0;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    background: #fff !important;
+    overflow: visible !important;
+    z-index: 9999 !important;
+  }
+  /* Force the root to be visible so overlay inside it can be shown */
+  #root {
+    display: block !important;
   }
   .dossier-content {
-    box-shadow: none;
-    border: none;
-    max-width: 100%;
-    background: #fff;
-    color: #111;
+    box-shadow: none !important;
+    border: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: #fff !important;
+    color: #111 !important;
+    border-radius: 0 !important;
+    padding: 24px !important;
+  }
+  .d-body {
+    overflow: visible !important;
+    max-height: none !important;
   }
   .d-head {
-    background: none;
-    border-bottom: 2px solid #111;
+    background: none !important;
+    border-bottom: 2px solid #111 !important;
   }
-  .d-close, .d-footer .btn {
+  .d-close, .d-footer, .d-footer .btn {
     display: none !important;
   }
   .d-section h3, .d-eyebrow, .d-sub {
     color: #333 !important;
   }
-  .d-narrative, table.d-table td {
+  .d-narrative, table.d-table td, table.d-table th {
     color: #111 !important;
   }
   .hash-block {
-    background: #eef2ff;
-    color: #1a2a52;
-    border-color: #ccd;
+    background: #eef2ff !important;
+    color: #1a2a52 !important;
+    border-color: #ccd !important;
   }
   .subgraph-box {
-    border-color: #ccc;
-    background: #fafafa;
+    border-color: #ccc !important;
+    background: #fafafa !important;
+  }
+  .disclaimer {
+    display: block !important;
+    font-size: 10px !important;
+    color: #999 !important;
+    margin-top: 24px !important;
   }
 }
 
