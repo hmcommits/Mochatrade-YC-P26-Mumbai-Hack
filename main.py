@@ -91,7 +91,11 @@ _feature_importance: list[dict] = [
     {"feature": "account_age",   "importance": 0.07},
 ]
 
-ALERT_THRESHOLD = 70.0   # risk score ≥ this -> alert
+ALERT_THRESHOLD = 70.0   # risk score >= this -> alert
+
+# Risk score cache: account_id -> float. Invalidated on ingest.
+_score_cache: dict[str, float] = {}
+
 
 
 # ==============================================================================
@@ -164,11 +168,19 @@ def _build_hetero_data_for_subgraph(
                     acc_stats[v]["dw_cnt"] += 1
                 acc_stats[v]["vol"] += ev.get("amount", 0)
 
+    # Build reverse map to detect shared devices (needed for 7th feature)
+    dev_to_accs: dict[str, list[str]] = {}
+    for a in acc_nodes:
+        d = devices.get(a, "")
+        dev_to_accs.setdefault(d, []).append(a)
+
     acc_feats = []
     for a in acc_nodes:
         s = acc_stats[a]
         md = s["dw_sum"] / max(s["dw_cnt"], 1)
         age = G.nodes.get(a, {}).get("age_days", 180)
+        dev_id = devices.get(a, "")
+        is_shared = 1.0 if len(dev_to_accs.get(dev_id, [])) > 1 else 0.0
         acc_feats.append([
             float(s["in_d"]),
             float(s["out_d"]),
@@ -176,6 +188,7 @@ def _build_hetero_data_for_subgraph(
             float(md) / 3600,
             float(age) / 365,
             1.0 if age <= 30 else 0.0,
+            is_shared,                 # 7th feature — matches train.py
         ])
 
     dev_feats = [[float(sum(1 for a in acc_nodes if devices.get(a) == d)), 0.5]
@@ -229,18 +242,25 @@ def score_account(account_id: str, k: int = 2) -> float:
     """
     Score a single account using a bounded k-hop ego subgraph.
     Falls back to a heuristic score if model not loaded.
+    Result is cached; call _invalidate_score(account_id) after ingest.
     Returns float in [0, 100].
     """
     if not G.has_node(account_id):
         return 0.0
+    # Cache hit — avoids re-scoring all nodes on every GET /graph
+    if account_id in _score_cache:
+        return _score_cache[account_id]
     if _model is None:
-        return _heuristic_score(account_id)
+        score = _heuristic_score(account_id)
+        _score_cache[account_id] = score
+        return score
 
     try:
         t0  = time.perf_counter()
         sub = nx.ego_graph(G, account_id, radius=k, undirected=True)
         nodes = list(sub.nodes())
-        edges = [(u, v) for u, v, _ in sub.edges(data=False)]
+        # data=False -> (u, v) 2-tuples; collect as list of pairs
+        edges = list(sub.edges())
         devs  = _get_devices_map()
         hd, acc_idx, _ = _build_hetero_data_for_subgraph(nodes, edges, devs)
         if hd is None or account_id not in acc_idx:
@@ -256,10 +276,20 @@ def score_account(account_id: str, k: int = 2) -> float:
         _metrics["avg_inference_latency_ms"] = round(
             0.9 * _metrics["avg_inference_latency_ms"] + 0.1 * lat, 1
         )
-        return round(prob * 100, 1)
+        result = round(prob * 100, 1)
+        _score_cache[account_id] = result
+        return result
     except Exception as exc:
         log.warning("score_account(%s) error: %s", account_id, exc)
-        return _heuristic_score(account_id)
+        fallback = _heuristic_score(account_id)
+        _score_cache[account_id] = fallback
+        return fallback
+
+
+def _invalidate_score(*account_ids: str) -> None:
+    """Remove accounts from the score cache so next call re-scores."""
+    for aid in account_ids:
+        _score_cache.pop(aid, None)
 
 
 def _heuristic_score(account_id: str) -> float:
@@ -464,7 +494,7 @@ def _edge_ablation(account_id: str, k: int = 2, top_n: int = 8) -> tuple[list[di
             trimmed.remove_edge(u, v)
 
         nodes = list(trimmed.nodes())
-        edges = [(a, b) for a, b, _ in trimmed.edges(data=False)]
+        edges = list(trimmed.edges())   # data=False -> (u, v) 2-tuples
 
         if _model and account_id in [n for n in nodes if n.startswith("ACC_")]:
             try:
@@ -680,7 +710,8 @@ def ingest(tx: TransactionIn) -> dict:
             G.nodes[tx.src]["shared_device"] = True
         G.add_edge(tx.src, tx.device_id, kind="uses")
 
-    # Score immediately post-ingest
+    # Invalidate cached scores for affected accounts then re-score
+    _invalidate_score(tx.src, tx.dst)
     risk = score_account(tx.src)
     alt_id = _maybe_fire_alert(tx.src, risk)
 
@@ -1115,11 +1146,12 @@ def health() -> dict:
 # ==============================================================================
 @app.post("/demo/reset")
 def demo_reset() -> dict:
-    """Clear graph and alerts; reload from background snapshot."""
+    """Clear graph, alerts, and score cache; reload from background snapshot."""
     global _alerts, _transactions, _tx_counter
     _alerts       = {}
     _transactions = {}
     _tx_counter   = 0
+    _score_cache.clear()
     _load_background_graph()
     acc_count = sum(1 for n in G.nodes if n.startswith("ACC_"))
     tx_count  = G.number_of_edges()
