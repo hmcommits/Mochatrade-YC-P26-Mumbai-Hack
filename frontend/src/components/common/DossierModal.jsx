@@ -33,47 +33,72 @@ export function DossierModal() {
   const nodes = c.subgraphNodes || ['ACC-7734', 'ACC-2210', 'ACC-5589', 'ACC-9081'];
   const pos = {};
   if (nodes.length === 2) {
-    pos[nodes[0]] = [70, 140];
-    pos[nodes[1]] = [210, 140];
+    pos[nodes[0]] = [140, 80];
+    pos[nodes[1]] = [140, 200];
   } else if (nodes.length === 3) {
     pos[nodes[0]] = [140, 50];
     pos[nodes[1]] = [60, 200];
     pos[nodes[2]] = [220, 200];
   } else {
-    pos[nodes[0]] = [140, 40];
-    pos[nodes[1]] = [40, 140];
-    pos[nodes[2]] = [240, 140];
-    pos[nodes[3] || 'ACC-9081'] = [140, 235];
+    // Scatter-gather layout: hub at top, legs in middle, cashout at bottom
+    pos[nodes[0]] = [140, 40];   // hub
+    pos[nodes[1]] = [60, 150];   // scatter leg 1
+    pos[nodes[2]] = [220, 150];  // scatter leg 2
+    pos[nodes[3] || nodes[0]] = [140, 250]; // cashout
   }
 
-  const lines = dwellList.map((r, idx) => {
-    const parts = r.flow.split('→').map(s => s.trim());
-    const fromId = parts[0], toId = parts[1];
-    if (pos[fromId] && pos[toId]) {
-      const [x1, y1] = pos[fromId], [x2, y2] = pos[toId];
-      const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
-      return (
-        <g key={idx}>
-          <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#E5484D" strokeWidth="1.6" opacity="0.8" />
-          <text x={mx} y={my - 5} fontFamily="Space Mono, monospace" fontSize="9" fill="#F2A0A2" textAnchor="middle">
-            {fmtCurrency(r.amount)}
+  // Draw edges: hub → each scatter leg → cashout (always, regardless of flow string format)
+  const nodeKeys = Object.keys(pos);
+  const hub = nodeKeys[0];
+  const cashout = nodeKeys[nodeKeys.length - 1];
+  const middleLegs = nodeKeys.slice(1, nodeKeys.length - 1);
+
+  const lines = [];
+  // hub → each middle leg
+  middleLegs.forEach((legId, idx) => {
+    const [x1, y1] = pos[hub];
+    const [x2, y2] = pos[legId];
+    const amtRow = dwellList[idx];
+    lines.push(
+      <g key={`hub-${idx}`}>
+        <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#E5484D" strokeWidth="1.6" opacity="0.7" markerEnd="url(#arrow)" />
+        {amtRow && (
+          <text x={(x1+x2)/2 + 6} y={(y1+y2)/2} fontFamily="Space Mono, monospace" fontSize="9" fill="#F2A0A2" textAnchor="middle">
+            {fmtCurrency(amtRow.amount)}
           </text>
+        )}
+      </g>
+    );
+  });
+  // each middle leg → cashout
+  if (nodeKeys.length > 2) {
+    middleLegs.forEach((legId, idx) => {
+      const [x1, y1] = pos[legId];
+      const [x2, y2] = pos[cashout];
+      const amtRow = dwellList[middleLegs.length + idx];
+      lines.push(
+        <g key={`leg-cashout-${idx}`}>
+          <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#E5484D" strokeWidth="1.6" opacity="0.7" markerEnd="url(#arrow)" />
+          {amtRow && (
+            <text x={(x1+x2)/2 + 6} y={(y1+y2)/2} fontFamily="Space Mono, monospace" fontSize="9" fill="#F2A0A2" textAnchor="middle">
+              {fmtCurrency(amtRow.amount)}
+            </text>
+          )}
         </g>
       );
-    }
-    return null;
-  });
+    });
+  }
 
   const nodeCircles = Object.entries(pos).map(([id, [x, y]], idx) => {
     const isHub = idx === 0;
-    const isCashout = idx === Object.keys(pos).length - 1;
+    const isCashout = idx === Object.keys(pos).length - 1 && Object.keys(pos).length > 2;
     return (
       <g key={id}>
-        <circle cx={x} cy={y} r="20" fill={isHub || isCashout ? '#E5484D' : '#4C8DFF'} opacity={isHub || isCashout ? 0.9 : 0.85} />
-        <text x={x} y={y + 3} fontFamily="Space Mono, monospace" fontSize="9" fontWeight="700" fill="#0B0F1A" textAnchor="middle">
+        <circle cx={x} cy={y} r="22" fill={isHub || isCashout ? '#E5484D' : '#4C8DFF'} opacity={isHub || isCashout ? 0.9 : 0.85} />
+        <text x={x} y={y + 4} fontFamily="Space Mono, monospace" fontSize="9" fontWeight="700" fill="#0B0F1A" textAnchor="middle">
           {id.slice(-4)}
         </text>
-        <text x={x} y={y + 34} fontFamily="Inter, sans-serif" fontSize="9.5" fill="#8B96AC" textAnchor="middle">
+        <text x={x} y={y + 36} fontFamily="Inter, sans-serif" fontSize="9.5" fill="#8B96AC" textAnchor="middle">
           {isHub ? 'hub' : isCashout ? 'cash-out' : 'scatter leg'}
         </text>
       </g>
@@ -105,7 +130,12 @@ export function DossierModal() {
           <div className="d-section">
             <h3>Isolated subgraph — GNNExplainer output</h3>
             <div className="subgraph-box">
-              <svg viewBox="0 0 280 280" width="100%" style={{ maxWidth: '320px', display: 'block', margin: '0 auto' }}>
+              <svg viewBox="0 0 280 290" width="100%" style={{ maxWidth: '320px', display: 'block', margin: '0 auto' }}>
+                <defs>
+                  <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                    <path d="M0,0 L0,6 L8,3 z" fill="#E5484D" opacity="0.8" />
+                  </marker>
+                </defs>
                 {lines}
                 {nodeCircles}
               </svg>
