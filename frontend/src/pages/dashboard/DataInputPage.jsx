@@ -52,6 +52,10 @@ export function DataInputPage() {
   const handleFileSelect = e => {
     const file = e.target.files?.[0];
     if (file) processFile(file);
+    // Reset the input value so selecting the same file again triggers onChange
+    if (e.target) {
+        e.target.value = null;
+    }
   };
 
   const processFile = file => {
