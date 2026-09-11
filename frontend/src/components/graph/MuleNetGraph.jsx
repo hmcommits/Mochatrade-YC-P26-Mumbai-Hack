@@ -130,15 +130,23 @@ export function MuleNetGraph({ onInvestigateAccount }) {
           const dx = n.x - o.x, dy = n.y - o.y;
           const d2 = dx * dx + dy * dy || 0.01;
           const d = Math.sqrt(d2);
-          const rep = (n.cluster === o.cluster) ? 1400 : 2200;
+          // High repulsion spreads them out nicely
+          const rep = (n.cluster === o.cluster) ? 1400 : 2500;
           const f = rep / d2;
           fx += (dx / d) * f;
           fy += (dy / d) * f;
         }
-        fx += (centerX - n.x) * 0.0035;
+        fx += (centerX - n.x) * 0.0035; // Gentle gravity
         fy += (centerY - n.y) * 0.0035;
-        n.vx = (n.vx + fx) * 0.76;
-        n.vy = (n.vy + fy) * 0.76;
+        n.vx = (n.vx + fx) * 0.65; // Good friction
+        n.vy = (n.vy + fy) * 0.65;
+        
+        // Safety cap
+        const speed = Math.sqrt(n.vx * n.vx + n.vy * n.vy);
+        if (speed > 12) {
+            n.vx = (n.vx / speed) * 12;
+            n.vy = (n.vy / speed) * 12;
+        }
       }
 
       // Edge spring tension
