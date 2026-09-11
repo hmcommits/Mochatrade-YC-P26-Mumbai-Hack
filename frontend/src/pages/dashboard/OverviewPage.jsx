@@ -74,7 +74,17 @@ export function OverviewPage() {
         </div>
 
         <div id="caseList">
-          {cases.map(c => (
+          {cases.length === 0 ? (
+            <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-dim)' }}>
+              <div style={{ fontSize: '28px', marginBottom: '12px' }}>🔍</div>
+              <div style={{ fontSize: '13px', fontFamily: 'var(--font-mono)' }}>
+                No active investigations detected.
+              </div>
+              <div style={{ fontSize: '12px', marginTop: '8px', color: 'var(--text-faint)' }}>
+                Upload a transaction dataset or load the demo to begin analysis.
+              </div>
+            </div>
+          ) : cases.map(c => (
             <div
               key={c.id}
               className={`case-card ${statusClass[c.status] || 'risk-elevated'}`}
@@ -95,10 +105,10 @@ export function OverviewPage() {
 
               <div className="case-meta">
                 <span>
-                  <b>{c.accounts}</b> accounts
+                  <b>{Array.isArray(c.accounts) ? c.accounts.length : c.accounts}</b> accounts
                 </span>
                 <span>
-                  <b>{c.tx}</b> transactions
+                  <b>{Array.isArray(c.tx) ? c.tx.length : c.tx}</b> transactions
                 </span>
               </div>
 

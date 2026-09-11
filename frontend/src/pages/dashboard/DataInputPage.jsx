@@ -130,9 +130,8 @@ export function DataInputPage() {
 
       if (current >= 7) {
         clearInterval(interval);
+        // Don't hide the pipeline overlay yet — keep it visible while we hit the backend
         setTimeout(async () => {
-          setIsPipelineRunning(false);
-
           try {
             // Format for backend
             const txs = lastParsedRows.map(r => ({
@@ -158,18 +157,19 @@ export function DataInputPage() {
               throw new Error(text || res.statusText);
             }
 
-            // loadUploadedDataset handles fetching fresh live data internally with min_risk=0
+            // Fetch fresh dataset (min_risk=0 so all uploaded accounts appear)
             await loadUploadedDataset();
 
-            // Navigate replacing history so Back button skips the loading state
+            // Now hide overlay and navigate
+            setIsPipelineRunning(false);
             navigate('/app/overview', { replace: true });
 
           } catch (err) {
             console.error(err);
-            alert("Backend ML inference failed: " + err.message);
             setIsPipelineRunning(false);
+            alert("Backend ML inference failed: " + err.message);
           }
-        }, 500);
+        }, 300);
       }
     }, 280);
   };
@@ -262,13 +262,6 @@ export function DataInputPage() {
                 </>
               )}
             </div>
-
-            {validationResult.isValid && (
-              <button className="btn btn-accent btn-lg" onClick={handleAnalyzeDataset}>
-                <Play size={15} />
-                Analyze Dataset →
-              </button>
-            )}
           </div>
 
           <div style={{ fontSize: '13px', color: 'var(--text-dim)', lineHeight: 1.6 }}>
@@ -414,11 +407,11 @@ export function DataInputPage() {
               <div>
                 <span className="eyebrow">PROCESSING INGESTION PIPELINE</span>
                 <h3 style={{ fontFamily: 'var(--font-head)', fontSize: '21px', marginTop: '4px' }}>
-                  Analyzing Ingested Dataset
+                  {pipePercent < 100 ? 'Analyzing Ingested Dataset' : 'Sending to PyTorch ML Backend...'}
                 </h3>
               </div>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--blue)', fontWeight: 700 }}>
-                {pipePercent}%
+                {pipePercent < 100 ? `${pipePercent}%` : '⏳'}
               </div>
             </div>
 
@@ -426,7 +419,7 @@ export function DataInputPage() {
               {pipelineSteps.map((stg, i) => {
                 const stepNum = i + 1;
                 const isStepActive = pipeStep === stepNum;
-                const isStepDone = pipeStep > stepNum;
+                const isStepDone = pipeStep > stepNum || pipePercent >= 100;
 
                 return (
                   <div
@@ -443,8 +436,11 @@ export function DataInputPage() {
               })}
             </div>
 
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-faint)', textAlign: 'center' }}>
-              Constructing graph representations and routing to interactive dashboard…
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-faint)', textAlign: 'center', marginTop: '8px' }}>
+              {pipePercent < 100
+                ? 'Constructing graph representations and routing to interactive dashboard…'
+                : `Ingesting ${lastParsedRows?.length || 0} transactions into PyTorch GNN — please wait…`
+              }
             </div>
           </div>
         </div>
