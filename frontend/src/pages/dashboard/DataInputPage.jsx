@@ -20,11 +20,12 @@ export function DataInputPage() {
   const [isPipelineRunning, setIsPipelineRunning] = useState(false);
   const [pipeStep, setPipeStep] = useState(0);
   const [pipePercent, setPipePercent] = useState(0);
+  const [fileInputKey, setFileInputKey] = useState(Date.now());
 
   const pipelineSteps = [
     { title: 'CSV DATA', desc: 'Parsing rows & timestamps' },
     { title: 'DATA VALIDATION', desc: 'Schema & entity validation' },
-    { title: 'GRAPH CONSTRUCTION', desc: 'Accounts · Devices · Subnets' },
+    { title: 'GRAPH CONSTRUCTION', desc: 'Accounts → Devices → Subnets' },
     { title: 'HETEROGENEOUS GNN', desc: 'Topology embeddings' },
     { title: 'RISK SCORING', desc: 'Zero-dwell & velocity scoring' },
     { title: 'SUSPICIOUS CLUSTER DETECTION', desc: 'Scatter-gather clustering' },
@@ -45,25 +46,28 @@ export function DataInputPage() {
     e.preventDefault();
     e.stopPropagation();
     setIsDragActive(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) processFile(file);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      processFile(e.dataTransfer.files[0]);
+    }
   };
 
   const handleFileSelect = e => {
-    const file = e.target.files?.[0];
-    if (file) {
-        console.log("File selected:", file.name, "Size:", file.size);
-        processFile(file);
-    }
-    // Reset the input value so selecting the same file again triggers onChange
-    if (e.target) {
-        e.target.value = '';
+    try {
+      const file = e.target.files?.[0];
+      if (file) {
+          processFile(file);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error reading file selection: " + err.message);
+    } finally {
+      // Force React to completely remount the input so the browser never caches it
+      setFileInputKey(Date.now());
     }
   };
 
   const processFile = file => {
     if (!file.name.toLowerCase().endsWith('.csv')) {
-      console.warn("Invalid file format", file.name);
       setValidationResult({
         isValid: false,
         msg: 'Invalid file format: Please upload a file with a .csv extension.'
@@ -187,6 +191,7 @@ export function DataInputPage() {
         <p>Upload your multi-party transaction log to construct the heterogeneous graph and run the risk-scoring pipeline.</p>
 
         <input
+          key={fileInputKey}
           type="file"
           ref={fileInputRef}
           accept=".csv"

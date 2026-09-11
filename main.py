@@ -1237,7 +1237,7 @@ def remove_from_watchlist(item_id: str):
 @app.get("/reports")
 def get_reports():
     reports = []
-    for idx, alert in enumerate(_alerts):
+    for idx, alert in enumerate(_alerts.values()):
         reports.append({
             "title": f"RBI SOP Section 4(b) Freeze Request - {alert['alert_id']}",
             "category": "Regulatory Emergency Freeze",
