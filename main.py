@@ -485,7 +485,7 @@ def _edge_ablation(account_id: str, k: int = 2, top_n: int = 8) -> tuple[list[di
         return amt / max(dw, 0.1)   # high amount / low dwell = suspicious
 
     candidates = sorted(all_sub_edges, key=lambda t: -_priority(t[0], t[1], t[2]))
-    candidates = candidates[:top_n * 3]   # cap model calls
+    candidates = candidates[:top_n]   # run at most top_n model calls
 
     scored_edges: list[tuple[str, str, float]] = []
     for u, v, _ in candidates:
@@ -761,7 +761,15 @@ def get_graph(
     nodes_out = []
     for n in node_set:
         is_acc = n.startswith("ACC_")
-        rs     = score_account(n) if is_acc else None
+        if is_acc:
+            # Use cached score (fast); fall back to cheap heuristic for graph rendering.
+            # Full ML scoring happens lazily via GET /score/{id}.
+            if n in _score_cache:
+                rs = _score_cache[n]
+            else:
+                rs = _heuristic_score(n)
+        else:
+            rs = None
         if is_acc and rs is not None and rs < min_risk:
             continue
         nodes_out.append({
