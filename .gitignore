@@ -1,8 +1,17 @@
-# MuleNet .gitignore
-
 # Python
 __pycache__/
 *.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# Frontend build artifacts
+frontend/node_modules/
+frontend/dist/
 *.pyo
 .venv/
 venv/
