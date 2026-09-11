@@ -29,16 +29,26 @@ export async function fetchLiveDataset() {
 
     const validNodeIds = new Set(nodes.map(n => n.id));
 
-    const edges = graphData.edges
-        .filter(e => validNodeIds.has(e.source) && validNodeIds.has(e.target))
-        .map((e, idx) => ({
-            from: e.source,
-            to: e.target,
-            amount: e.amount || 0,
-            dwellSec: e.dwell_seconds || 0,
-            type: e.amount ? 'tx' : 'device',
-            tag: `tx${idx}`
-        }));
+    const edgeMap = new Map();
+    graphData.edges.forEach((e, idx) => {
+        if (!validNodeIds.has(e.source) || !validNodeIds.has(e.target)) return;
+        // Create an undirected key so multi-directional edges merge into one physics spring
+        const key = e.source < e.target ? `${e.source}-${e.target}` : `${e.target}-${e.source}`;
+        if (!edgeMap.has(key)) {
+            edgeMap.set(key, {
+                from: e.source,
+                to: e.target,
+                amount: e.amount || 0,
+                dwellSec: e.dwell_seconds || 0,
+                type: e.amount ? 'tx' : 'device',
+                tag: `tx${idx}`
+            });
+        } else {
+            // Aggregate amounts for visual weight, but keep single physics spring
+            edgeMap.get(key).amount += (e.amount || 0);
+        }
+    });
+    const edges = Array.from(edgeMap.values());
 
     const cases = alertsData.alerts.map(a => ({
         id: a.alert_id,
