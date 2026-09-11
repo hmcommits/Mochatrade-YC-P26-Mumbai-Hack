@@ -118,10 +118,33 @@ export function DataInputPage() {
 
       if (current >= 7) {
         clearInterval(interval);
-        setTimeout(() => {
+        setTimeout(async () => {
           setIsPipelineRunning(false);
-          const model = buildUploadedDatasetModel(lastParsedRows, lastFilename || 'custom_dataset.csv');
-          loadUploadedDataset(model);
+
+          // Format for backend
+          const txs = lastParsedRows.map(r => ({
+            src: r.sender_id,
+            dst: r.receiver_id,
+            amount: Number(r.amount) || 0,
+            timestamp: r.timestamp || new Date().toISOString(),
+            device_id: r.device_id || null
+          }));
+
+          // Clear the backend graph first
+          await fetch('http://localhost:8000/demo/reset', { method: 'POST' });
+
+          // Push all rows to backend for real ML inference
+          await fetch('http://localhost:8000/ingest/batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(txs)
+          });
+
+          // Reload the live global dataset
+          const { fetchLiveDataset } = await import('../../utils/api');
+          const liveData = await fetchLiveDataset();
+          await loadUploadedDataset(liveData); // We pass the liveData to the context
+
           navigate('/app/overview');
         }, 500);
       }

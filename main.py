@@ -1247,3 +1247,9 @@ def get_reports():
             "caseId": alert["alert_id"]
         })
     return {"reports": reports}
+
+@app.post("/ingest/batch")
+def ingest_batch(txs: list[TransactionIn]) -> dict:
+    for tx in txs:
+        ingest(tx)
+    return {"status": "success", "count": len(txs)}
