@@ -27,14 +27,18 @@ export async function fetchLiveDataset() {
         };
     });
 
-    const edges = graphData.edges.map((e, idx) => ({
-        from: e.source,
-        to: e.target,
-        amount: e.amount || 0,
-        dwellSec: e.dwell_seconds || 0,
-        type: e.amount ? 'tx' : 'device',
-        tag: `tx${idx}`
-    }));
+    const validNodeIds = new Set(nodes.map(n => n.id));
+
+    const edges = graphData.edges
+        .filter(e => validNodeIds.has(e.source) && validNodeIds.has(e.target))
+        .map((e, idx) => ({
+            from: e.source,
+            to: e.target,
+            amount: e.amount || 0,
+            dwellSec: e.dwell_seconds || 0,
+            type: e.amount ? 'tx' : 'device',
+            tag: `tx${idx}`
+        }));
 
     const cases = alertsData.alerts.map(a => ({
         id: a.alert_id,
