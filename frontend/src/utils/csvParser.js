@@ -24,13 +24,18 @@ export function parseCSV(text) {
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i];
     if (!line) continue;
-    const parts = line.split(',').map(p => p.trim().replace(/^["']|["']$/g, ''));
+    
+    // Split by comma, but ignore commas inside double quotes (Google Sheets standard for numbers > 999)
+    const parts = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(p => p.trim().replace(/^["']|["']$/g, ''));
     if (parts.length < rawHeaders.length) continue;
+
+    let amtStr = parts[colIndex.amount] || '';
+    amtStr = amtStr.replace(/[$,\s]/g, ''); // Strip dollar signs, commas, and spaces
 
     const row = {
       sender_id: parts[colIndex.sender_id] || '',
       receiver_id: parts[colIndex.receiver_id] || '',
-      amount: parseFloat(parts[colIndex.amount]) || 0,
+      amount: parseFloat(amtStr) || 0,
       timestamp: parts[colIndex.timestamp] || '',
       device_id: parts[colIndex.device_id] || '',
       ip_subnet: parts[colIndex.ip_subnet] || ''
