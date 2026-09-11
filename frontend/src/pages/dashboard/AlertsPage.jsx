@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { useDataset } from '../../context/DatasetContext';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, ShieldAlert, CheckCircle2, Eye, Filter, ArrowRight } from 'lucide-react';
+import { useDataset } from '../../context/DatasetContext';
+import { AlertTriangle, Eye, ShieldAlert, ArrowRight, CheckCircle, Crosshair } from 'lucide-react';
 
 export function AlertsPage() {
   const { currentDataset, openDossier, addToWatchlist, setFocusedNodeId } = useDataset();
@@ -9,52 +9,18 @@ export function AlertsPage() {
   const [filterSeverity, setFilterSeverity] = useState('ALL');
   const [actionMessage, setActionMessage] = useState(null);
 
-  const rawAlerts = [
-    {
-      id: 'ALT-1092',
-      severity: 'CRITICAL',
-      type: 'Pre-emptive Flag',
-      target: 'ACC-9081',
-      score: 94,
-      timestamp: '2026-08-29 09:11:47',
-      description: 'Account created on hardware device DEV-CF19A3 which resolves to blacklisted proxy subnet 103.21.58.0/24.',
-      caseId: 'CASE-0417',
-      details: 'Flagged prior to initial deposit. Pattern matches CASE-0201 scatter-gather syndicate.'
-    },
-    {
-      id: 'ALT-1091',
-      severity: 'CRITICAL',
-      type: 'Zero-Dwell Scatter-Gather',
-      target: 'ACC-7734',
-      score: 95,
-      timestamp: '2026-08-29 09:17:05',
-      description: '₹4,80,000 dispersed across 3 legs and re-gathered in 17 seconds. Dwell time under 60s.',
-      caseId: 'CASE-0417',
-      details: 'Transit velocity 28x above normal baseline. Funds gathered into fresh cash-out account.'
-    },
-    {
-      id: 'ALT-1089',
-      severity: 'ELEVATED',
-      type: 'Device Hardware Binding',
-      target: 'DEV-118BQ',
-      score: 61,
-      timestamp: '2026-08-29 11:02:14',
-      description: 'Device linked to 2 newly created accounts exhibiting burst transaction velocity.',
-      caseId: 'CASE-0392',
-      details: 'Accounts ACC-4471 and ACC-6602 opened 9 days apart. Average dwell 6.8 minutes.'
-    },
-    {
-      id: 'ALT-1084',
-      severity: 'LOW',
-      type: 'Routine Sweep Variance',
-      target: 'ACC-1123',
-      score: 12,
-      timestamp: '2026-08-28 14:10:05',
-      description: 'Cohort reviewed after daily automated check. Dwell times standard (>3 days).',
-      caseId: 'CASE-0388',
-      details: 'No subnet overlap. Cleared as normal retail commercial transactions.'
-    },
-  ];
+  // Read live alerts pulled from the FastAPI backend into currentDataset.cases
+  const rawAlerts = (currentDataset.cases || []).map((c, i) => ({
+    id: `ALT-${1000 + i}`,
+    caseId: c.id,
+    severity: c.status,
+    type: 'Algorithmic Detection',
+    target: c.accounts?.[0] || 'Unknown',
+    score: c.risk,
+    timestamp: new Date().toLocaleTimeString(),
+    description: c.summary,
+    details: 'View dossier for full transaction edge ablation.',
+  }));
 
   const alerts = rawAlerts.filter(a => filterSeverity === 'ALL' || a.severity === filterSeverity);
 
@@ -82,14 +48,12 @@ export function AlertsPage() {
           </p>
         </div>
 
-        {/* Severity Filter Tabs */}
-        <div style={{ display: 'flex', gap: '6px', background: 'var(--panel-2)', padding: '4px', borderRadius: '8px', border: '1px solid var(--line)' }}>
+        <div style={{ display: 'flex', gap: '8px' }}>
           {['ALL', 'CRITICAL', 'ELEVATED', 'LOW'].map(sev => (
             <button
               key={sev}
-              onClick={() => setFilterSeverity(sev)}
               className={`btn btn-sm ${filterSeverity === sev ? 'btn-primary' : 'btn-ghost'}`}
-              style={{ padding: '6px 12px' }}
+              onClick={() => setFilterSeverity(sev)}
             >
               {sev}
             </button>
@@ -98,141 +62,92 @@ export function AlertsPage() {
       </div>
 
       {actionMessage && (
-        <div
-          style={{
-            background: 'var(--teal-dim)',
-            border: '1px solid var(--teal)',
-            color: '#A2F2DE',
-            padding: '12px 18px',
-            borderRadius: '8px',
-            marginBottom: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            fontSize: '13px'
-          }}
-        >
-          <CheckCircle2 size={18} />
-          {actionMessage}
+        <div className="alert-strip" style={{ marginBottom: '20px' }}>
+          <CheckCircle size={18} color="var(--green)" />
+          <div style={{ fontWeight: 500 }}>{actionMessage}</div>
         </div>
       )}
 
-      {/* Alerts Grid */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-        {alerts.map(alt => {
-          const isCrit = alt.severity === 'CRITICAL';
-          const isElev = alt.severity === 'ELEVATED';
-
-          return (
-            <div
-              key={alt.id}
-              className="card"
-              style={{
-                borderLeft: `4px solid ${isCrit ? 'var(--red)' : isElev ? 'var(--amber)' : 'var(--teal)'}`,
-                padding: '20px 24px'
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span
-                    style={{
-                      fontFamily: 'var(--font-mono)',
-                      fontWeight: 700,
-                      fontSize: '14px',
-                      color: isCrit ? 'var(--red)' : isElev ? 'var(--amber)' : 'var(--teal)'
-                    }}
-                  >
-                    {alt.id}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: '10px',
-                      fontFamily: 'var(--font-mono)',
-                      fontWeight: 700,
-                      padding: '3px 8px',
-                      borderRadius: '4px',
-                      background: isCrit ? 'var(--red-dim)' : isElev ? 'var(--amber-dim)' : 'var(--teal-dim)',
-                      color: isCrit ? '#FBB4B6' : isElev ? '#F5C57E' : '#7FE0C6'
-                    }}
-                  >
-                    {alt.severity}
-                  </span>
-                  <span style={{ fontSize: '12px', color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>
-                    {alt.timestamp}
-                  </span>
+      {/* Alert List */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingBottom: '32px' }}>
+        {alerts.length === 0 ? (
+          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-dim)', background: 'var(--bg-card)', borderRadius: '6px', border: '1px solid var(--line)' }}>
+            No active alerts matching this severity.
+          </div>
+        ) : alerts.map(alt => (
+          <div key={alt.id} className="card" style={{ padding: '0', display: 'flex', overflow: 'hidden' }}>
+            <div style={{
+              width: '4px',
+              background: alt.severity === 'CRITICAL' ? 'var(--red)' : alt.severity === 'ELEVATED' ? 'var(--orange)' : 'var(--blue)'
+            }} />
+            <div style={{ padding: '20px 24px', flex: 1, display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-dim)' }}>{alt.id}</span>
+                    <span className={`case-status`} style={{ fontSize: '10px', background: 'transparent', padding: 0 }}>
+                      {alt.severity}
+                    </span>
+                    <span style={{ fontSize: '12px', color: 'var(--text-dim)' }}>{alt.timestamp}</span>
+                  </div>
+                  <h3 style={{ fontSize: '17px', color: '#fff' }}>{alt.type}</h3>
                 </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '11px', color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>RISK INDEX:</span>
-                  <span
-                    style={{
-                      fontFamily: 'var(--font-mono)',
-                      fontWeight: 700,
-                      fontSize: '16px',
-                      color: isCrit ? 'var(--red)' : isElev ? 'var(--amber)' : 'var(--teal)'
-                    }}
-                  >
-                    {alt.score}/100
-                  </span>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '20px', fontWeight: 600, color: alt.score > 80 ? 'var(--red)' : '#fff' }}>{alt.score}/100</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-dim)' }}>RISK SCORE</div>
                 </div>
               </div>
 
-              <div style={{ marginTop: '12px', fontSize: '14px', fontWeight: 600, color: 'var(--text)' }}>
-                {alt.type}: <span style={{ color: 'var(--blue)' }}>{alt.target}</span>
-              </div>
-              <p style={{ marginTop: '6px', fontSize: '13px', color: 'var(--text-dim)', lineHeight: 1.6 }}>
-                {alt.description}
-              </p>
-              <div style={{ marginTop: '8px', fontSize: '11.5px', color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>
-                Context: {alt.details}
+              <div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--bg-main)', padding: '4px 10px', borderRadius: '4px', fontSize: '13px', fontWeight: 600, color: '#fff', marginBottom: '10px' }}>
+                  <Crosshair size={14} color="var(--red)" />
+                  Target: {alt.target}
+                </div>
+                <p style={{ fontSize: '14px', lineHeight: '1.5', color: 'var(--text)' }}>
+                  {alt.description}
+                </p>
+                <p style={{ fontSize: '13px', lineHeight: '1.5', color: 'var(--text-dim)', marginTop: '6px' }}>
+                  {alt.details}
+                </p>
               </div>
 
-              {/* Action Buttons */}
-              <div style={{ display: 'flex', gap: '10px', marginTop: '18px', flexWrap: 'wrap' }}>
-                {isCrit && (
-                  <button className="btn btn-danger btn-sm" onClick={() => handleInitiateFreeze(alt)}>
+              <div style={{ borderTop: '1px solid var(--line)', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>
+                  Linked Case: <b style={{ color: '#fff' }}>{alt.caseId}</b>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button className="btn btn-ghost btn-sm" onClick={() => addToWatchlist({ id: alt.target, type: 'Account', risk: alt.score, reason: alt.type, addedAt: new Date().toISOString().slice(0, 10), status: 'Active Monitoring' })}>
                     <ShieldAlert size={13} />
-                    Initiate RBI Freeze
+                    Watchlist
                   </button>
-                )}
 
-                <button
-                  className="btn btn-primary btn-sm"
-                  onClick={() => {
-                    const matchedCase = currentDataset.cases?.find(c => c.id === alt.caseId) || currentDataset.cases?.[0];
-                    if (matchedCase) openDossier(matchedCase);
-                  }}
-                >
-                  <Eye size={13} />
-                  Open Case Dossier
-                </button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => handleViewInGraph(alt)}>
+                    <ArrowRight size={13} />
+                    Focus in Graph
+                  </button>
 
-                <button className="btn btn-ghost btn-sm" onClick={() => handleViewInGraph(alt)}>
-                  <ArrowRight size={13} />
-                  Focus in Graph
-                </button>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => handleInitiateFreeze(alt)}
+                  >
+                    Initiate Freeze
+                  </button>
 
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => {
-                    addToWatchlist({
-                      id: alt.target,
-                      type: alt.target.startsWith('DEV') ? 'Device' : alt.target.startsWith('NET') ? 'Subnet' : 'Account',
-                      risk: alt.score,
-                      reason: alt.description,
-                      addedAt: '2026-08-29',
-                      status: isCrit ? 'Freeze Pending' : 'Active Monitoring'
-                    });
-                    setActionMessage(`${alt.target} added to Watchlist.`);
-                    setTimeout(() => setActionMessage(null), 3000);
-                  }}
-                >
-                  + Add to Watchlist
-                </button>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={() => {
+                      const matchedCase = currentDataset.cases?.find(c => c.id === alt.caseId) || currentDataset.cases?.[0];
+                      if (matchedCase) openDossier(matchedCase);
+                    }}
+                  >
+                    <Eye size={13} />
+                    Open Case Dossier
+                  </button>
+                </div>
               </div>
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     </div>
   );

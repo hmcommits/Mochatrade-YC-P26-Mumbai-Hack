@@ -8,8 +8,8 @@ export function HomePage() {
   const navigate = useNavigate();
   const { loadDemoDataset } = useDataset();
 
-  const handleExploreDemo = () => {
-    loadDemoDataset();
+  const handleExploreDemo = async () => {
+    await loadDemoDataset();
     navigate('/app/overview');
   };
 
