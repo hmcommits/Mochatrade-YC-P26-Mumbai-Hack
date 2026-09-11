@@ -91,17 +91,19 @@ export async function fetchLiveDataset(minRisk = 40) {
             txCount: edges.filter(e => e.type === 'tx').length, 
             accCount: nodes.filter(n=>n.type==='account').length, 
             devCount: nodes.filter(n=>n.type==='device').length,
-            totalVolume: Math.round(edges.reduce((acc, e) => acc + (e.amount || 0), 0))
+            totalVolume: Math.round(edges.reduce((acc, e) => acc + (e.amount || 0), 0)),
+            network_risk: statsData.network_risk_score ?? '--'
         },
         alert: cases.length > 0 ? {
             title: 'MULE RING DETECTED',
             body: cases[0].summary
         } : null,
+        alerts: alertsData.alerts || [],   // raw alerts array for badge counts
         nodes,
         edges,
         cases,
         logs: [
-            { t: new Date().toLocaleTimeString(), level: 'warn', html: `Live data loaded from FastAPI backend. Nodes: ${nodes.length}, Edges: ${edges.length}` }
+            { t: new Date().toLocaleTimeString(), level: 'warn', html: `Live data loaded from FastAPI backend. Nodes: ${nodes.length}, Edges: ${edges.length}, Alerts: ${cases.length}` }
         ]
     };
 }
@@ -138,6 +140,11 @@ export async function apiRemoveFromWatchlist(id) {
 
 export async function fetchReports() {
     const res = await fetch(`${API_URL}/reports`);
+    return res.json();
+}
+
+export async function fetchAlerts() {
+    const res = await fetch(`${API_URL}/alerts`);
     return res.json();
 }
 

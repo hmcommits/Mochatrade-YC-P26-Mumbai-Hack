@@ -158,12 +158,12 @@ export function DataInputPage() {
               throw new Error(text || res.statusText);
             }
 
-            // Reload the live global dataset
-            const { fetchLiveDataset } = await import('../../utils/api');
-            const liveData = await fetchLiveDataset();
-            await loadUploadedDataset(liveData); // We pass the liveData to the context
+            // loadUploadedDataset handles fetching fresh live data internally with min_risk=0
+            await loadUploadedDataset();
 
-            navigate('/app/overview');
+            // Navigate replacing history so Back button skips the loading state
+            navigate('/app/overview', { replace: true });
+
           } catch (err) {
             console.error(err);
             alert("Backend ML inference failed: " + err.message);

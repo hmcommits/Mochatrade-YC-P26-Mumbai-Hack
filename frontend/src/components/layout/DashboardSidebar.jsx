@@ -16,17 +16,17 @@ import { useDataset } from '../../context/DatasetContext';
 
 export function DashboardSidebar() {
   const { currentDataset, watchlist } = useDataset();
-  const alertCount = currentDataset.cases?.filter(c => c.status === 'CRITICAL').length || 1;
+  const alertCount = currentDataset?.alerts?.length || currentDataset?.cases?.length || 0;
 
   const navItems = [
     { label: 'Overview', to: '/app/overview', icon: LayoutDashboard },
-    { label: 'Alerts', to: '/app/alerts', icon: AlertTriangle, badge: '14', badgeClass: 'badge-crit' },
+    { label: 'Alerts', to: '/app/alerts', icon: AlertTriangle, badge: alertCount > 0 ? alertCount.toString() : null, badgeClass: 'badge-crit' },
     { label: 'Transactions', to: '/app/transactions', icon: ArrowLeftRight },
     { label: 'AI Insights', to: '/app/ai-insights', icon: Sparkles },
     { section: 'MANAGEMENT' },
-    { label: 'Watchlist', to: '/app/watchlist', icon: Shield, badge: watchlist.length.toString(), badgeClass: 'badge-blue' },
+    { label: 'Watchlist', to: '/app/watchlist', icon: Shield, badge: watchlist.length > 0 ? watchlist.length.toString() : null, badgeClass: 'badge-blue' },
     { label: 'Reports', to: '/app/reports', icon: FileText },
-    { label: 'Case Mgmt', to: '/app/cases', icon: Briefcase, badge: currentDataset.cases?.length.toString(), badgeClass: 'badge-blue' },
+    { label: 'Case Mgmt', to: '/app/cases', icon: Briefcase, badge: currentDataset.cases?.length > 0 ? currentDataset.cases.length.toString() : null, badgeClass: 'badge-blue' },
     { label: 'Data Ingestion', to: '/app/input', icon: Upload },
     { section: 'SYSTEM' },
     { label: 'Settings', to: '/app/settings', icon: Settings },

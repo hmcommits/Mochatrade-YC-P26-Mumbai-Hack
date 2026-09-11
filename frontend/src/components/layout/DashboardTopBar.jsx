@@ -33,16 +33,16 @@ export function DashboardTopBar() {
           {/* Ticker metrics */}
           <div className="dash-ticker">
             <div className="dash-ticker-item">
-              <div className="dash-ticker-val">1,28,406</div>
+              <div className="dash-ticker-val">{(currentDataset?.stats?.accCount || 0).toLocaleString('en-IN')}</div>
               <div className="dash-ticker-lbl">accounts monitored</div>
             </div>
             <div className="dash-ticker-item">
-              <div className="dash-ticker-val live">14</div>
+              <div className="dash-ticker-val live">{currentDataset?.alerts?.length || currentDataset?.cases?.length || 0}</div>
               <div className="dash-ticker-lbl">flagged today</div>
             </div>
             <div className="dash-ticker-item">
-              <div className="dash-ticker-val">340ms</div>
-              <div className="dash-ticker-lbl">avg. detection time</div>
+              <div className="dash-ticker-val">{currentDataset?.stats?.network_risk ?? '--'}</div>
+              <div className="dash-ticker-lbl">network risk score</div>
             </div>
           </div>
         </div>
@@ -56,7 +56,10 @@ export function DashboardTopBar() {
             {activeMode === 'uploaded' ? 'Uploaded Dataset' : 'Demo Dataset'}
           </span>
           <span style={{ color: 'var(--text-dim)' }}>
-            {currentDataset.statusDetails || 'Sample Scenario · CASE-0417 Scatter-Gather Ring · 15 nodes'}
+            {activeMode === 'uploaded'
+              ? `${currentDataset?.stats?.accCount || 0} accounts · ${currentDataset?.stats?.txCount || 0} transactions · ${currentDataset?.alerts?.length || 0} alerts detected`
+              : currentDataset.statusDetails || 'Network Risk: 100 | High-risk transaction pattern detected'
+            }
           </span>
         </div>
 
