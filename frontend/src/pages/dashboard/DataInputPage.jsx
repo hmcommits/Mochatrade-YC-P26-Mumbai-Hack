@@ -51,15 +51,19 @@ export function DataInputPage() {
 
   const handleFileSelect = e => {
     const file = e.target.files?.[0];
-    if (file) processFile(file);
+    if (file) {
+        console.log("File selected:", file.name, "Size:", file.size);
+        processFile(file);
+    }
     // Reset the input value so selecting the same file again triggers onChange
     if (e.target) {
-        e.target.value = null;
+        e.target.value = '';
     }
   };
 
   const processFile = file => {
     if (!file.name.toLowerCase().endsWith('.csv')) {
+      console.warn("Invalid file format", file.name);
       setValidationResult({
         isValid: false,
         msg: 'Invalid file format: Please upload a file with a .csv extension.'
