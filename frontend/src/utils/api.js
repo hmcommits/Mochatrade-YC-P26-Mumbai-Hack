@@ -1,4 +1,5 @@
-const API_URL = 'http://localhost:8000';
+// Read API URL from environment variables for production, fallback to localhost for local dev
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export async function fetchLiveDataset(minRisk = 40) {
     // Only fetch nodes with elevated risk to keep the visualization clean and performant
