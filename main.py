@@ -649,11 +649,13 @@ def ingest(tx: TransactionIn) -> dict:
         })
 
     try:
-        ts = datetime.fromisoformat(tx.timestamp.replace("Z", "+00:00"))
+        from dateutil.parser import parse as parse_date
+        from datetime import timezone
+        # Parse the string robustly (handles spaces, slashes, isoformats, missing T, etc)
+        ts = parse_date(tx.timestamp)
         if ts.tzinfo is None:
-            from datetime import timezone
             ts = ts.replace(tzinfo=timezone.utc)
-    except ValueError:
+    except Exception as e:
         raise HTTPException(status_code=400, detail={
             "error": "bad_request", "message": "Invalid timestamp format"
         })
