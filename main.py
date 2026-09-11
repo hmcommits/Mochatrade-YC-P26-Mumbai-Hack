@@ -656,9 +656,8 @@ def ingest(tx: TransactionIn) -> dict:
         if ts.tzinfo is None:
             ts = ts.replace(tzinfo=timezone.utc)
     except Exception as e:
-        raise HTTPException(status_code=400, detail={
-            "error": "bad_request", "message": "Invalid timestamp format"
-        })
+        log.warning(f"Skipping tx due to invalid timestamp: '{tx.timestamp}'. Error: {e}")
+        return {"status": "skipped", "reason": "invalid_timestamp"}
 
     # O(1) dwell calculation via node attribute dict lookup
     last_seen = G.nodes.get(tx.src, {}).get("last_seen")
