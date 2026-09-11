@@ -267,16 +267,16 @@ def hero_ring_transactions(t0: datetime | None = None) -> list[dict]:
 
 # ── Main generation pipeline ──────────────────────────────────────────────────
 def generate() -> None:
-    print("═" * 60)
-    print("MuleNet — Synthetic Data Generator")
-    print("═" * 60)
+    print("=" * 60)
+    print("MuleNet - Synthetic Data Generator")
+    print("=" * 60)
 
     # 1. Normal traffic
-    print(f"\n[1/5] Generating {N_NORMAL_TX:,} normal transactions …")
+    print(f"\n[1/5] Generating {N_NORMAL_TX:,} normal transactions ...")
     all_rows: list[dict] = normal_traffic(accounts, N_NORMAL_TX)
 
     # 2. Mule rings
-    print(f"[2/5] Planting {N_RINGS} mule rings …")
+    print(f"[2/5] Planting {N_RINGS} mule rings ...")
     mule_labels: set[str] = set()
     for i in range(N_RINGS):
         rows, ring = mule_ring(accounts, i)
@@ -288,18 +288,18 @@ def generate() -> None:
           f"({len(mule_in_pool)/N_ACCOUNTS*100:.1f}%)")
 
     # 3. Device assignment
-    print("[3/5] Assigning device fingerprints …")
+    print("[3/5] Assigning device fingerprints ...")
     devices: dict[str, str] = assign_devices(accounts, mule_labels)
     # Hero accounts all share a single device
     for a in HERO_ACCOUNTS + [HERO_SOURCE]:
         devices[a] = HERO_DEVICE
 
-    # 4. Label map (all accounts in pool + OFFRAMP nodes)
-    print("[4/5] Building label map …")
+    # 4. Label map (all accounts in pool)
+    print("[4/5] Building label map ...")
     labels: dict[str, int] = {a: (1 if a in mule_labels else 0) for a in accounts}
 
     # 5. Persist
-    print("[5/5] Saving to data/ …")
+    print("[5/5] Saving to data/ ...")
     with open(os.path.join(DATA_DIR, "transactions.json"), "w") as f:
         json.dump(all_rows, f, indent=2)
     with open(os.path.join(DATA_DIR, "labels.json"), "w") as f:
@@ -309,15 +309,15 @@ def generate() -> None:
 
     # Stats
     n_mule_tx = sum(1 for r in all_rows if r["is_mule"] == 1)
-    print(f"\n{'─'*40}")
+    print(f"\n{'-'*40}")
     print(f"  Total transactions : {len(all_rows):,}")
     print(f"  Mule transactions  : {n_mule_tx:,} ({n_mule_tx/len(all_rows)*100:.1f}%)")
     print(f"  Mule accounts      : {len(mule_in_pool):,} ({len(mule_in_pool)/N_ACCOUNTS*100:.1f}%)")
     print(f"  Total devices      : {len(set(devices.values())):,}")
-    print(f"\n  data/transactions.json — {len(all_rows):,} rows")
-    print(f"  data/labels.json       — {len(labels):,} entries")
-    print(f"  data/devices.json      — {len(devices):,} entries")
-    print("═" * 60)
+    print(f"\n  data/transactions.json -- {len(all_rows):,} rows")
+    print(f"  data/labels.json       -- {len(labels):,} entries")
+    print(f"  data/devices.json      -- {len(devices):,} entries")
+    print("=" * 60)
     print("Done.")
 
 

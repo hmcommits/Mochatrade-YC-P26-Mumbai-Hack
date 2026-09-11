@@ -1,5 +1,5 @@
 """
-train.py — MuleNet PyTorch Geometric model training.
+train.py -- MuleNet PyTorch Geometric model training.
 
 Loads synthetic graph data, constructs a HeteroData object, trains a 2-layer
 heterogeneous GraphSAGE model via to_hetero, evaluates on a stratified test
@@ -8,13 +8,13 @@ split, and saves the checkpoint to mulenet_model.pt.
 Prints:
   - Epoch losses
   - Held-out accuracy, precision, recall, F1
-  - False-Positive Rate (FPR) — required by spec
+  - False-Positive Rate (FPR) -- required by spec
   - Inference latency on a k-hop subgraph
 
 Saves:
   - mulenet_model.pt         (model state dict + metadata)
   - data/hetero_data.pt      (serialized HeteroData for reference)
-  - data/account_ids.json    (ordered list — needed by main.py)
+  - data/account_ids.json    (ordered list -- needed by main.py)
 """
 
 import json
@@ -45,14 +45,14 @@ torch.manual_seed(SEED)
 np.random.seed(SEED)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 1. Load data
-# ══════════════════════════════════════════════════════════════════════════════
-print("═" * 60)
-print("MuleNet — Model Training")
-print("═" * 60)
+# ==============================================================================
+print("=" * 60)
+print("MuleNet -- Model Training")
+print("=" * 60)
 
-print("\n[1/6] Loading data …")
+print("\n[1/6] Loading data ...")
 with open(os.path.join(DATA_DIR, "transactions.json")) as f:
     all_rows: list[dict] = json.load(f)
 with open(os.path.join(DATA_DIR, "labels.json")) as f:
@@ -65,10 +65,10 @@ print(f"  Accounts     : {len(labels_map):,}")
 print(f"  Devices      : {len(set(devices_map.values())):,}")
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 2. Build node/edge index maps
-# ══════════════════════════════════════════════════════════════════════════════
-print("\n[2/6] Building index maps …")
+# ==============================================================================
+print("\n[2/6] Building index maps ...")
 
 # Only keep real ACC_ nodes (not OFFRAMP_*)
 account_ids: list[str] = sorted(
@@ -83,13 +83,13 @@ print(f"  Account nodes : {len(account_ids):,}")
 print(f"  Device nodes  : {len(device_ids):,}")
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 3. Compute node features
-# ══════════════════════════════════════════════════════════════════════════════
-print("\n[3/6] Computing node features …")
+# ==============================================================================
+print("\n[3/6] Computing node features ...")
 
-# ── Account features: in_degree, out_degree, total_volume, mean_dwell,
-#                     account_age_days, is_new_account ──────────────────────
+# -- Account features: in_degree, out_degree, total_volume, mean_dwell,
+#                     account_age_days, is_new_account ----------------------
 acc_feat: dict[str, dict] = {a: {
     "in_deg": 0, "out_deg": 0, "volume": 0.0,
     "dwell_sum": 0.0, "dwell_cnt": 0,
@@ -127,7 +127,7 @@ for a in account_ids:
         is_new,
     ])
 
-# ── Device features: linked_accounts, device_age ─────────────────────────
+# -- Device features: linked_accounts, device_age -------------------------
 dev_linked: dict[str, int] = {d: 0 for d in device_ids}
 for a, d in devices_map.items():
     if a in acc_idx and d in dev_idx:
@@ -149,10 +149,10 @@ print(f"  Account feature shape : {acc_x.shape}")
 print(f"  Device feature shape  : {dev_x.shape}")
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 4. Build HeteroData
-# ══════════════════════════════════════════════════════════════════════════════
-print("\n[4/6] Constructing HeteroData …")
+# ==============================================================================
+print("\n[4/6] Constructing HeteroData ...")
 
 data = HeteroData()
 data["account"].x = acc_x
@@ -191,10 +191,10 @@ print(f"  Metadata         : {data.metadata()}")
 torch.save(data, os.path.join(DATA_DIR, "hetero_data.pt"))
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 5. Train
-# ══════════════════════════════════════════════════════════════════════════════
-print("\n[5/6] Training …")
+# ==============================================================================
+print("\n[5/6] Training ...")
 
 # Stratified train/test split on account indices
 labels_np = data["account"].y.numpy()
@@ -216,7 +216,7 @@ print(f"  Label balance (train): "
       f"{data['account'].y[train_mask].float().mean().item()*100:.1f}% mule")
 
 
-# ── Model definition ──────────────────────────────────────────────────────────
+# -- Model definition ----------------------------------------------------------
 class SAGE(torch.nn.Module):
     def __init__(self, hidden: int = HIDDEN, out: int = 1):
         super().__init__()
@@ -263,10 +263,10 @@ for epoch in range(1, EPOCHS + 1):
 model.load_state_dict(best_state)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 6. Evaluate
-# ══════════════════════════════════════════════════════════════════════════════
-print("\n[6/6] Evaluating on test set …")
+# ==============================================================================
+print("\n[6/6] Evaluating on test set ...")
 model.eval()
 with torch.no_grad():
     # Latency measurement
@@ -290,15 +290,15 @@ prec = precision_score(y_true, y_pred, zero_division=0)
 rec  = recall_score(y_true, y_pred, zero_division=0)
 f1   = f1_score(y_true, y_pred, zero_division=0)
 
-print(f"\n{'─'*40}")
+print(f"\n{'-'*40}")
 print(f"  Accuracy  : {acc*100:.2f}%")
 print(f"  Precision : {prec*100:.2f}%")
 print(f"  Recall    : {rec*100:.2f}%")
 print(f"  F1        : {f1:.4f}")
-print(f"  FPR       : {fpr*100:.2f}%   ← measured on held-out test set")
+print(f"  FPR       : {fpr*100:.2f}%   <- measured on held-out test set")
 print(f"  TP={tp}, FP={fp}, FN={fn}, TN={tn}")
 print(f"  Full-graph inference latency : {lat_ms:.1f} ms")
-print(f"{'─'*40}")
+print(f"{'-'*40}")
 
 # Save checkpoint with metadata
 checkpoint = {
@@ -321,7 +321,7 @@ torch.save(checkpoint, MODEL_PATH)
 with open(os.path.join(DATA_DIR, "account_ids.json"), "w") as f:
     json.dump(account_ids, f)
 
-print(f"\n  ✓ Saved mulenet_model.pt")
-print(f"  ✓ Saved data/account_ids.json")
-print("═" * 60)
+print(f"\n  OK Saved mulenet_model.pt")
+print(f"  OK Saved data/account_ids.json")
+print("=" * 60)
 print("Training complete.")
