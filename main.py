@@ -1,5 +1,5 @@
 """
-main.py — MuleNet FastAPI backend service.
+main.py -- MuleNet FastAPI backend service.
 
 Single service, in-memory networkx.MultiDiGraph graph store.
 No Redis, Neo4j, Spring Boot, or Node.js.
@@ -8,7 +8,7 @@ Start:
     uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 All endpoints match the frozen API contract exactly.
-JSON field names are the spec — do not rename them.
+JSON field names are the spec -- do not rename them.
 """
 
 from __future__ import annotations
@@ -36,19 +36,19 @@ from torch import Tensor
 from torch_geometric.data import HeteroData
 from torch_geometric.nn import SAGEConv, to_hetero
 
-# ── Logging ───────────────────────────────────────────────────────────────────
+# -- Logging -------------------------------------------------------------------
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("mulenet")
 
-# ── Paths ─────────────────────────────────────────────────────────────────────
+# -- Paths ---------------------------------------------------------------------
 BASE_DIR      = os.path.dirname(__file__)
 DATA_DIR      = os.path.join(BASE_DIR, "data")
 MODEL_PATH    = os.path.join(BASE_DIR, "mulenet_model.pt")
 TEMPLATE_DIR  = os.path.join(BASE_DIR, "templates")
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # PyG model definition (must match train.py exactly)
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 class SAGE(torch.nn.Module):
     def __init__(self, hidden: int = 64, out: int = 1):
         super().__init__()
@@ -60,9 +60,9 @@ class SAGE(torch.nn.Module):
         return self.conv2(x, edge_index)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# Global state — loaded once at startup
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
+# Global state -- loaded once at startup
+# ==============================================================================
 G: nx.MultiDiGraph = nx.MultiDiGraph()
 _model: Optional[torch.nn.Module] = None
 _model_meta: dict                 = {}
@@ -91,17 +91,17 @@ _feature_importance: list[dict] = [
     {"feature": "account_age",   "importance": 0.07},
 ]
 
-ALERT_THRESHOLD = 70.0   # risk score ≥ this → alert
+ALERT_THRESHOLD = 70.0   # risk score ≥ this -> alert
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # Model helpers
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 def _load_model() -> bool:
     """Load checkpoint and reconstruct the hetero model. Returns True on success."""
     global _model, _model_meta, _checkpoint, _model_loaded, _metrics
     if not os.path.exists(MODEL_PATH):
-        log.warning("mulenet_model.pt not found — running without ML scoring")
+        log.warning("mulenet_model.pt not found -- running without ML scoring")
         return False
     try:
         ckpt       = torch.load(MODEL_PATH, map_location="cpu", weights_only=False)
@@ -399,7 +399,7 @@ def _maybe_fire_alert(account_id: str, risk_score: float) -> Optional[str]:
     desc_map = {
         "SCATTER_GATHER":   f"High-velocity fund dispersal detected across {G.out_degree(account_id)} accounts",
         "DEVICE_HASH_MATCH": f"Shared device fingerprint across multiple flagged accounts",
-        "STRUCTURING":       "Possible structuring — multiple small inbound transfers",
+        "STRUCTURING":       "Possible structuring -- multiple small inbound transfers",
         "DORMANT_WAKEUP":    "Dormant account suddenly active with suspicious outbound flow",
     }
     _alerts[alt_id] = {
@@ -418,15 +418,15 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # Explainability
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 def _gnn_explain(account_id: str, k: int = 2) -> tuple[list[dict], list[dict], str]:
     """
     Try GNNExplainer; fall back to edge-ablation on any error.
     Returns (nodes, edges, method_name).
     """
-    # Always use edge-ablation — GNNExplainer on HeteroData has masking issues
+    # Always use edge-ablation -- GNNExplainer on HeteroData has masking issues
     # in most PyG versions; this is the documented fallback.
     return _edge_ablation(account_id, k)
 
@@ -502,9 +502,9 @@ def _edge_ablation(account_id: str, k: int = 2, top_n: int = 8) -> tuple[list[di
     return nodes_out, edges_out, "edge_ablation"
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # Graph loading helpers
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 def _load_background_graph() -> None:
     """Populate G from data/transactions.json (normal traffic only, no hero rings)."""
     global G, _background_txs, _tx_counter
@@ -514,7 +514,7 @@ def _load_background_graph() -> None:
     lab_path = os.path.join(DATA_DIR, "labels.json")
 
     if not os.path.exists(tx_path):
-        log.warning("data/transactions.json not found — graph is empty")
+        log.warning("data/transactions.json not found -- graph is empty")
         return
 
     with open(tx_path) as f:
@@ -581,9 +581,9 @@ def _load_background_graph() -> None:
     log.info("Graph loaded: %d nodes, %d edges", G.number_of_nodes(), G.number_of_edges())
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # FastAPI app
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 app = FastAPI(
     title="MuleNet API",
     description="Mule-network detection via heterogeneous GNN. In-memory graph, no external DB.",
@@ -604,7 +604,7 @@ def startup() -> None:
     _load_background_graph()
 
 
-# ── Pydantic request models ───────────────────────────────────────────────────
+# -- Pydantic request models ---------------------------------------------------
 class TransactionIn(BaseModel):
     src:       str
     dst:       str
@@ -617,9 +617,9 @@ class AcknowledgeAllIn(BaseModel):
     pattern: Optional[str] = None
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 1. Ingestion
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 @app.post("/ingest")
 def ingest(tx: TransactionIn) -> dict:
     if not tx.src or not tx.dst or tx.amount is None:
@@ -685,9 +685,9 @@ def ingest(tx: TransactionIn) -> dict:
     }
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 2. Graph & Overview
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 @app.get("/graph")
 def get_graph(
     min_risk: float = Query(0, ge=0, le=100),
@@ -741,9 +741,9 @@ def get_graph(
     }
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 3. Scoring
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 @app.get("/score/{account_id}")
 def get_score(account_id: str) -> dict:
     if not G.has_node(account_id):
@@ -788,9 +788,9 @@ def get_account(account_id: str) -> dict:
     }
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 4. Alerts
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 @app.get("/alerts")
 def get_alerts(
     threshold:            float = Query(70, ge=0, le=100),
@@ -832,9 +832,9 @@ def acknowledge_all(body: AcknowledgeAllIn) -> dict:
     return {"acknowledged_count": count}
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 5. Transactions
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 @app.get("/transactions")
 def get_transactions(
     page:       int = Query(1, ge=1),
@@ -930,9 +930,9 @@ def get_transaction(transaction_id: str) -> dict:
     }
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 6. Explainability & Dossier
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 @app.post("/explain/{account_id}")
 def explain(account_id: str) -> dict:
     if not G.has_node(account_id):
@@ -1024,7 +1024,7 @@ def dossier(account_id: str) -> Response:
                 },
             )
         except ImportError:
-            log.warning("WeasyPrint not available — returning HTML dossier")
+            log.warning("WeasyPrint not available -- returning HTML dossier")
             return Response(
                 content=html_str.encode(),
                 media_type="text/html",
@@ -1044,9 +1044,9 @@ def dossier(account_id: str) -> Response:
         })
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 7. AI Insights / Stats
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 @app.get("/stats")
 def get_stats() -> dict:
     # Network risk = mean risk of top-10% highest-scoring accounts (quick proxy)
@@ -1061,7 +1061,7 @@ def get_stats() -> dict:
     active_clusters = sum(1 for alt in _alerts.values()
                           if not alt["acknowledged"] and alt["risk_score"] >= ALERT_THRESHOLD)
     status = "High-risk transaction pattern detected" if net_risk >= 70 \
-             else ("Elevated activity — monitoring" if net_risk >= 40 else "Network normal")
+             else ("Elevated activity -- monitoring" if net_risk >= 40 else "Network normal")
 
     return {
         "network_risk_score":        net_risk,
@@ -1075,9 +1075,9 @@ def get_stats() -> dict:
     }
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 8. Health
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 @app.get("/health")
 def health() -> dict:
     acc_count = sum(1 for n in G.nodes if n.startswith("ACC_"))
@@ -1089,9 +1089,9 @@ def health() -> dict:
     }
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # 9. Demo / Hackathon Controls
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 @app.post("/demo/reset")
 def demo_reset() -> dict:
     """Clear graph and alerts; reload from background snapshot."""

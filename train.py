@@ -36,8 +36,8 @@ from sklearn.metrics import (
 DATA_DIR   = os.path.join(os.path.dirname(__file__), "data")
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "mulenet_model.pt")
 HIDDEN     = 64
-EPOCHS     = 100
-LR         = 0.01
+EPOCHS     = 300
+LR         = 0.005
 TEST_FRAC  = 0.20
 SEED       = 42
 
@@ -112,19 +112,29 @@ account_ages: dict[str, int] = {
     a: int(np.random.randint(1, 365)) for a in account_ids
 }
 
-account_feats: list[list[float]] = []
+acc_feats = []
+# Build a reverse map: account -> linked accounts sharing its device
+dev_to_accounts: dict[str, list[str]] = {}
+for a, d in devices_map.items():
+    dev_to_accounts.setdefault(d, []).append(a)
+
 for a in account_ids:
     f = acc_feat[a]
     mean_dwell    = (f["dwell_sum"] / f["dwell_cnt"]) if f["dwell_cnt"] > 0 else 0.0
     age           = account_ages[a]
     is_new        = 1.0 if age <= 30 else 0.0
-    account_feats.append([
+    dev_id        = devices_map.get(a, "")
+    # is_shared_device: 1 if this account's device is linked to >1 account
+    shared_peers  = len(dev_to_accounts.get(dev_id, [])) - 1
+    is_shared_dev = 1.0 if shared_peers > 0 else 0.0
+    acc_feats.append([
         float(f["in_deg"]),
         float(f["out_deg"]),
         float(f["volume"]) / 1e6,   # scale to ~1
         float(mean_dwell) / 3600,   # scale to hours
         float(age) / 365,           # scale to years
         is_new,
+        is_shared_dev,              # ghost-emulator-farm signal
     ])
 
 # -- Device features: linked_accounts, device_age -------------------------
@@ -143,8 +153,8 @@ for d in device_ids:
         float(device_ages[d]) / 730,
     ])
 
-acc_x = torch.tensor(account_feats, dtype=torch.float)
-dev_x = torch.tensor(device_feats,  dtype=torch.float)
+acc_x = torch.tensor(acc_feats,  dtype=torch.float)
+dev_x = torch.tensor(device_feats, dtype=torch.float)
 print(f"  Account feature shape : {acc_x.shape}")
 print(f"  Device feature shape  : {dev_x.shape}")
 
@@ -229,7 +239,8 @@ class SAGE(torch.nn.Module):
 
 
 model = to_hetero(SAGE(), data.metadata(), aggr="sum")
-optimizer = torch.optim.Adam(model.parameters(), lr=LR)
+optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=1e-4)
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS, eta_min=1e-5)
 
 # Class weights to counter imbalance (~10% mule)
 n_pos = int(data["account"].y[train_mask].sum().item())
@@ -256,8 +267,10 @@ for epoch in range(1, EPOCHS + 1):
         best_loss  = loss.item()
         best_state = {k: v.clone() for k, v in model.state_dict().items()}
 
-    if epoch % 10 == 0:
-        print(f"  Epoch {epoch:3d} | loss = {loss.item():.4f}")
+    scheduler.step()
+
+    if epoch % 30 == 0:
+        print(f"  Epoch {epoch:3d} | loss = {loss.item():.4f} | lr = {scheduler.get_last_lr()[0]:.6f}")
 
 # Restore best
 model.load_state_dict(best_state)

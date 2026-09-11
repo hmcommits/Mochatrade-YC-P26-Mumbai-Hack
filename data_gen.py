@@ -1,14 +1,14 @@
 """
-data_gen.py — MuleNet synthetic transaction graph generator.
+data_gen.py -- MuleNet synthetic transaction graph generator.
 
 Generates ~3,000 accounts with ~90% normal traffic and ~10% planted mule rings
-following the exact 4-stage playbook: deposit → scatter → gather → cash-out.
+following the exact 4-stage playbook: deposit -> scatter -> gather -> cash-out.
 Device IDs are assigned so ~15% of mule accounts within a ring share a device.
 
 Outputs (written to data/):
-  transactions.json  — list of transaction dicts
-  labels.json        — dict mapping account_id -> is_mule (0|1)
-  devices.json       — dict mapping account_id -> device_id
+  transactions.json  -- list of transaction dicts
+  labels.json        -- dict mapping account_id -> is_mule (0|1)
+  devices.json       -- dict mapping account_id -> device_id
 """
 
 import json
@@ -21,7 +21,7 @@ import numpy as np
 random.seed(42)
 np.random.seed(42)
 
-# ── Constants ────────────────────────────────────────────────────────────────
+# -- Constants ----------------------------------------------------------------
 N_ACCOUNTS     = 3000
 N_NORMAL_TX    = 15000
 N_RINGS        = 40
@@ -31,11 +31,11 @@ DATA_DIR       = os.path.join(os.path.dirname(__file__), "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 
 
-# ── Account pool ─────────────────────────────────────────────────────────────
+# -- Account pool -------------------------------------------------------------
 accounts: list[str] = [f"ACC_{i}" for i in range(N_ACCOUNTS)]
 
 
-# ── Normal traffic ────────────────────────────────────────────────────────────
+# -- Normal traffic ------------------------------------------------------------
 def normal_traffic(accounts: list[str], n_tx: int = N_NORMAL_TX) -> list[dict]:
     """Generate background P2P transactions with lognormal amounts and
     exponential dwell times (legitimate money sits around for hours/days)."""
@@ -44,7 +44,7 @@ def normal_traffic(accounts: list[str], n_tx: int = N_NORMAL_TX) -> list[dict]:
         src, dst = random.sample(accounts, 2)
         amount   = float(np.random.lognormal(mean=8, sigma=1.2))
         ts       = START + timedelta(seconds=random.randint(0, WINDOW_SECONDS))
-        # Legitimate money sits around for hours/days — exponential with mean 8h
+        # Legitimate money sits around for hours/days -- exponential with mean 8h
         dwell    = float(np.random.exponential(scale=3600 * 8))
         rows.append(dict(
             transaction_id = f"TXN_{tx_idx:06d}",
@@ -59,15 +59,15 @@ def normal_traffic(accounts: list[str], n_tx: int = N_NORMAL_TX) -> list[dict]:
     return rows
 
 
-# ── Mule ring ─────────────────────────────────────────────────────────────────
+# -- Mule ring -----------------------------------------------------------------
 _tx_counter = N_NORMAL_TX   # global counter to keep transaction_id unique
 
 def mule_ring(accounts_pool: list[str], ring_id: int) -> tuple[list[dict], set[str]]:
     """
     Plant one mule ring following the 4-stage playbook:
       1. Source deposit (a large stolen-funds transfer into the source)
-      2. Scatter: fans out to 3–6 mule accounts, ΔT ≈ 1–5 s
-      3. Gather: 2–4 further hops, ΔT still low (1–8 s) — core fraud signature
+      2. Scatter: fans out to 3-6 mule accounts, ΔT ≈ 1-5 s
+      3. Gather: 2-4 further hops, ΔT still low (1-8 s) -- core fraud signature
       4. Cash-out: terminal transfer to OFFRAMP_<ring_id>
     Returns the transaction rows and the set of ring account IDs.
     """
@@ -85,7 +85,7 @@ def mule_ring(accounts_pool: list[str], ring_id: int) -> tuple[list[dict], set[s
     ring_accounts.add(source)
     ring_accounts.update(mules)
 
-    # ── Stage 1: deposit into source (one large inbound) ──────────────────
+    # -- Stage 1: deposit into source (one large inbound) ------------------
     sender = f"ACC_{random.randint(0, N_ACCOUNTS - 1)}"
     rows.append(dict(
         transaction_id = f"TXN_{_tx_counter:06d}",
@@ -99,7 +99,7 @@ def mule_ring(accounts_pool: list[str], ring_id: int) -> tuple[list[dict], set[s
     ))
     _tx_counter += 1
 
-    # ── Stage 2: scatter ─────────────────────────────────────────────────
+    # -- Stage 2: scatter -------------------------------------------------
     for i, m in enumerate(mules):
         rows.append(dict(
             transaction_id = f"TXN_{_tx_counter:06d}",
@@ -113,7 +113,7 @@ def mule_ring(accounts_pool: list[str], ring_id: int) -> tuple[list[dict], set[s
         ))
         _tx_counter += 1
 
-    # ── Stage 3: gather (2–4 hops) ───────────────────────────────────────
+    # -- Stage 3: gather (2-4 hops) ---------------------------------------
     current = mules[:]
     for hop in range(random.randint(2, 4)):
         nxt: list[str] = random.sample(
@@ -135,7 +135,7 @@ def mule_ring(accounts_pool: list[str], ring_id: int) -> tuple[list[dict], set[s
         ring_accounts.update(nxt)
         current = nxt
 
-    # ── Stage 4: cash-out ─────────────────────────────────────────────────
+    # -- Stage 4: cash-out -------------------------------------------------
     offramp = f"OFFRAMP_{ring_id}"
     for a in current:
         rows.append(dict(
@@ -153,7 +153,7 @@ def mule_ring(accounts_pool: list[str], ring_id: int) -> tuple[list[dict], set[s
     return rows, ring_accounts
 
 
-# ── Device assignment ─────────────────────────────────────────────────────────
+# -- Device assignment ---------------------------------------------------------
 def assign_devices(accounts: list[str], mule_labels: set[str]) -> dict[str, str]:
     """
     Give every account a unique device ID.
@@ -162,7 +162,7 @@ def assign_devices(accounts: list[str], mule_labels: set[str]) -> dict[str, str]
     This plants the 'ghost emulator farm' signal (~15% of mule accounts sharing).
     """
     devices: dict[str, str] = {a: f"DEV_{i}" for i, a in enumerate(accounts)}
-    # Add OFFRAMP virtual accounts — give each a unique device
+    # Add OFFRAMP virtual accounts -- give each a unique device
     for i, a in enumerate(
         set(d for tx_list in [] for d in []) | set()
     ):
@@ -187,7 +187,7 @@ def assign_devices(accounts: list[str], mule_labels: set[str]) -> dict[str, str]
     return devices
 
 
-# ── Hero scenario accounts (used by demo/seed-hero) ──────────────────────────
+# -- Hero scenario accounts (used by demo/seed-hero) --------------------------
 HERO_ACCOUNTS = [
     "ACC_HERO_1", "ACC_HERO_2", "ACC_HERO_3",
     "ACC_HERO_4", "ACC_HERO_5", "ACC_HERO_6",
@@ -265,7 +265,7 @@ def hero_ring_transactions(t0: datetime | None = None) -> list[dict]:
     return rows
 
 
-# ── Main generation pipeline ──────────────────────────────────────────────────
+# -- Main generation pipeline --------------------------------------------------
 def generate() -> None:
     print("=" * 60)
     print("MuleNet - Synthetic Data Generator")
