@@ -15,8 +15,11 @@ export function DatasetProvider({ children }) {
 
   useEffect(() => {
       // Auto-fetch the actual PyTorch backend graph on load
+      // Always seed demo data first so the graph is never empty on cold Render start
       const loadAll = async () => {
           try {
+              // Ensure graph has demo data (idempotent — safe to call every time)
+              await triggerDemoSeed();
               const data = await fetchLiveDataset();
               setCurrentDataset(data);
               
